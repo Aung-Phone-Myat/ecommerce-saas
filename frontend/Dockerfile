@@ -16,7 +16,10 @@ RUN npm run build
 
 FROM nginx:alpine
 
+ENV PORT=80
+
 COPY --from=build /app/dist /usr/share/nginx/html
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
 EXPOSE 80
 
