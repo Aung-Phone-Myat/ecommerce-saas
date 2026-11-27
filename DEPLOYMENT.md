@@ -21,7 +21,10 @@ and superseded; do not use it for this deployment.
 3. Get the Supabase **session pooler** connection string on port 5432, change the scheme
    to `postgresql+asyncpg://`, and percent-encode the password.
 4. Generate a secret with `openssl rand -hex 32`.
-5. From `backend/`, with `.env` pointing at the same Supabase database, apply migrations:
+5. For local migration work, copy `backend/.env.example` to `backend/.env`. Set
+   `DATABASE_URL` to the same session pooler URL, `JWT_SECRET_KEY` to the generated
+   secret, `DB_SSL=true`, and `DB_DISABLE_PREPARED_STATEMENTS=false`. Never commit `.env`.
+6. From `backend/`, run `uv sync`, then apply migrations:
 
    ```bash
    uv run alembic upgrade head
@@ -41,9 +44,9 @@ Set these service variables:
 
 | Variable | Value |
 | --- | --- |
-| `DATABASE_URL` | Supabase session pooler URL from step 2 |
-| `JWT_SECRET_KEY` | Secret from step 2 |
-| `CORS_ORIGINS` | Temporary value is fine here; finalized in step 5 |
+| `DATABASE_URL` | Supabase session pooler URL from Prerequisites item 3 (section 2) |
+| `JWT_SECRET_KEY` | Generated secret from Prerequisites item 4 (section 2) |
+| `CORS_ORIGINS` | Temporary JSON array is fine here, e.g. `["http://localhost:5173"]`; finalized in step 5 |
 | `ENVIRONMENT` | `production` |
 | `DB_SSL` | `true` |
 | `DB_DISABLE_PREPARED_STATEMENTS` | `false` |
@@ -69,6 +72,15 @@ Set this service variable:
 Railway passes service variables into Dockerfile `ARG`s at build time, so this supplies
 the existing `ARG VITE_API_URL` in `frontend/Dockerfile`.
 
+To catch a missing value before deploying, build locally from `frontend/` with the same
+value and confirm the bundle contains it:
+
+```bash
+VITE_API_URL=https://<actual-api-host> npm run build
+grep -R -q '<actual-api-host>' dist
+! grep -R -q 'localhost:8000' dist
+```
+
 After the deploy finishes, copy the generated public hostname. It is used as
 `<actual-web-host>` below.
 
@@ -93,7 +105,8 @@ so the new value takes effect.
 
 Railway Free includes $1 of usage credit per month shared by both services. Services
 sleep after roughly 5–10 minutes without traffic and wake on the next request, so the
-first page load or API call can be slow. There are no custom domains on Free.
+first page load or API call can be slow. Custom domains are out of scope; use the
+generated `*.up.railway.app` hostnames.
 
 ## 8. Verification
 
