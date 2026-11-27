@@ -38,12 +38,13 @@ truth; `README.md` documents endpoints, but its "Next Steps" section is stale.
 - The API origin is baked into the Vite build via `VITE_API_URL` (falls back to
   `http://localhost:8000`), so rebuild after changing it, including in Docker.
   Compose reads `backend/.env` for the backend container.
-- `render.yaml` is the Render Blueprint: `e-commerce-order-manangement-saas-api`
-  (Docker, `rootDir: backend`, binds `$PORT`, health `/health`) and
-  `e-commerce-order-manangement-saas-web` (static, `rootDir: frontend`, `dist`).
-  Secrets are entered in Render on first sync; Alembic migrations must be applied
-  to Supabase manually. Validate with `render blueprints validate render.yaml` if
-  the Render CLI is installed.
+- Railway is the current deploy target: two Docker services in one project,
+  `e-commerce-order-manangement-saas-api` (root `backend`, detected Dockerfile,
+  health `/health`, binds `$PORT`) and `e-commerce-order-manangement-saas-web`
+  (root `frontend`, detected Dockerfile, nginx binds `$PORT`). `VITE_API_URL` is a
+  build-time variable on the web service; API `CORS_ORIGINS` must name the exact
+  web hostname. See `DEPLOYMENT.md`. `render.yaml` is historical and superseded;
+  Alembic migrations must be applied to Supabase manually.
 - Confirm with the user before adding major dependencies or architectural patterns
   beyond this stack.
 
