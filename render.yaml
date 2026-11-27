@@ -1,0 +1,37 @@
+# Render Blueprint: deploy both services from the repo root.
+# DATABASE_URL and JWT_SECRET_KEY are prompted in Render on the first sync.
+# Rename either service and update VITE_API_URL / CORS_ORIGINS below.
+
+services:
+  - type: web
+    name: e-commerce-order-manangement-saas-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerCommand: /bin/sh -c "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: '["https://e-commerce-order-manangement-saas-web.onrender.com"]'
+      - key: ENVIRONMENT
+        value: production
+      - key: DB_SSL
+        value: "true"
+      - key: DB_DISABLE_PREPARED_STATEMENTS
+        value: "false"
+
+  - type: web
+    name: e-commerce-order-manangement-saas-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://e-commerce-order-manangement-saas-api.onrender.com
+      - key: NODE_VERSION
+        value: "22"
