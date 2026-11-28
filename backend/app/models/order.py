@@ -9,6 +9,7 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
+    Text,
     UniqueConstraint,
     func,
     text,
@@ -35,14 +36,18 @@ class Order(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    customer_id: Mapped[int] = mapped_column(
-        ForeignKey("customers.id", ondelete="RESTRICT"),
-        nullable=False,
+    customer_id: Mapped[int | None] = mapped_column(
+        ForeignKey("customers.id", ondelete="SET NULL"),
+        nullable=True,
     )
     owner_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
+    customer_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    customer_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    customer_phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    customer_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(
         String(20),
         nullable=False,
@@ -89,10 +94,14 @@ class OrderItem(Base):
         ForeignKey("orders.id", ondelete="CASCADE"),
         nullable=False,
     )
-    product_id: Mapped[int] = mapped_column(
-        ForeignKey("products.id", ondelete="RESTRICT"),
-        nullable=False,
+    product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("products.id", ondelete="SET NULL"),
+        nullable=True,
     )
+    product_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    product_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    product_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    product_stock_quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     price_at_time_of_purchase: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 

@@ -32,7 +32,7 @@ class CustomerSummary(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: int | None
     name: str
     email: str | None
     phone: str | None
@@ -44,7 +44,7 @@ class ProductSummary(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: int | None
     name: str
     description: str | None
     price: Decimal
@@ -57,7 +57,7 @@ class OrderItemRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    product_id: int
+    product_id: int | None
     product: ProductSummary
     quantity: int
     price_at_time_of_purchase: Decimal
@@ -70,7 +70,7 @@ class OrderRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    customer_id: int
+    customer_id: int | None
     customer: CustomerSummary
     owner_id: int
     status: OrderStatus

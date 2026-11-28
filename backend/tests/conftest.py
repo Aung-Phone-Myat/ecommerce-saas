@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -26,6 +27,13 @@ async def db_session() -> AsyncIterator[AsyncSession]:
         poolclass=StaticPool,
     )
 
+    @event.listens_for(engine.sync_engine, "connect")
+    def enable_foreign_keys(dbapi_connection, _connection_record) -> None:
+        """Match Postgres so RESTRICT/SET NULL behavior is actually tested."""
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
 
@@ -40,8 +48,13 @@ async def db_session() -> AsyncIterator[AsyncSession]:
 async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     """HTTP client with the app's database dependency pointed at the test DB."""
 
+    session_factory = async_sessionmaker(db_session.bind, expire_on_commit=False)
+
     async def override_get_db() -> AsyncIterator[AsyncSession]:
-        yield db_session
+        # Production get_db opens a session per request; mirror that here so
+        # deleted parents are not masked by a stale in-memory identity map.
+        async with session_factory() as session:
+            yield session
 
     app.dependency_overrides[get_db] = override_get_db
     transport = ASGITransport(app=app)
