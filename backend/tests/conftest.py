@@ -48,8 +48,13 @@ async def db_session() -> AsyncIterator[AsyncSession]:
 async def client(db_session: AsyncSession) -> AsyncIterator[AsyncClient]:
     """HTTP client with the app's database dependency pointed at the test DB."""
 
+    session_factory = async_sessionmaker(db_session.bind, expire_on_commit=False)
+
     async def override_get_db() -> AsyncIterator[AsyncSession]:
-        yield db_session
+        # Production get_db opens a session per request; mirror that here so
+        # deleted parents are not masked by a stale in-memory identity map.
+        async with session_factory() as session:
+            yield session
 
     app.dependency_overrides[get_db] = override_get_db
     transport = ASGITransport(app=app)

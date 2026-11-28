@@ -41,7 +41,7 @@ async def create_order(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Insufficient stock for product {exc.product_id}",
         ) from None
-    return OrderRead.model_validate(order)
+    return order_service.to_order_read(order)
 
 
 @router.get("", response_model=list[OrderRead])
@@ -51,7 +51,7 @@ async def list_orders(
 ) -> list[OrderRead]:
     """List all orders belonging to the authenticated user."""
     orders = await order_service.list_orders(db, current_user.id)
-    return [OrderRead.model_validate(order) for order in orders]
+    return [order_service.to_order_read(order) for order in orders]
 
 
 @router.get("/{order_id}", response_model=OrderRead)
@@ -65,7 +65,7 @@ async def get_order(
         order = await order_service.get_owned_order(db, current_user.id, order_id)
     except OrderNotFoundError:
         raise not_found_error("Order not found") from None
-    return OrderRead.model_validate(order)
+    return order_service.to_order_read(order)
 
 
 @router.put("/{order_id}/status", response_model=OrderRead)
@@ -82,4 +82,4 @@ async def update_order_status(
         )
     except OrderNotFoundError:
         raise not_found_error("Order not found") from None
-    return OrderRead.model_validate(order)
+    return order_service.to_order_read(order)

@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +8,14 @@ from sqlalchemy.orm import selectinload
 from app.models.customer import Customer
 from app.models.order import Order, OrderItem
 from app.models.product import Product
-from app.schemas.order import OrderCreate, OrderStatus
+from app.schemas.order import (
+    CustomerSummary,
+    OrderCreate,
+    OrderItemRead,
+    OrderRead,
+    OrderStatus,
+    ProductSummary,
+)
 
 ORDER_LOAD_OPTIONS = (
     selectinload(Order.customer),
@@ -44,16 +52,62 @@ def _owned_order_query(owner_id: int, order_id: int):
     )
 
 
+def to_order_read(order: Order) -> OrderRead:
+    """Build an order response from live data, falling back to captured details."""
+    customer = order.customer
+    return OrderRead(
+        id=order.id,
+        customer_id=order.customer_id,
+        customer=CustomerSummary(
+            id=order.customer_id,
+            name=customer.name if customer is not None else order.customer_name,
+            email=customer.email if customer is not None else order.customer_email,
+            phone=customer.phone if customer is not None else order.customer_phone,
+            address=customer.address if customer is not None else order.customer_address,
+        ),
+        owner_id=order.owner_id,
+        status=cast(OrderStatus, order.status),
+        total_amount=order.total_amount,
+        items=[
+            OrderItemRead(
+                id=item.id,
+                product_id=item.product_id,
+                product=ProductSummary(
+                    id=item.product_id,
+                    name=item.product.name if item.product is not None else item.product_name,
+                    description=(
+                        item.product.description
+                        if item.product is not None
+                        else item.product_description
+                    ),
+                    price=item.product.price if item.product is not None else item.product_price,
+                    stock_quantity=(
+                        item.product.stock_quantity
+                        if item.product is not None
+                        else item.product_stock_quantity
+                    ),
+                ),
+                quantity=item.quantity,
+                price_at_time_of_purchase=item.price_at_time_of_purchase,
+                line_total=item.line_total,
+            )
+            for item in order.items
+        ],
+        created_at=order.created_at,
+        updated_at=order.updated_at,
+    )
+
+
 async def create_order(db: AsyncSession, owner_id: int, payload: OrderCreate) -> Order:
     """Create an owner-scoped order, validate stock, and deduct it atomically."""
     try:
-        customer_id = await db.scalar(
-            select(Customer.id).where(
+        customer = await db.scalar(
+            select(Customer).where(
                 Customer.id == payload.customer_id,
                 Customer.owner_id == owner_id,
             )
         )
-        if customer_id is None:
+        if customer is None:
             raise OrderCustomerNotFoundError
 
         # Combine duplicate product lines so each product is deducted once.
@@ -85,6 +139,10 @@ async def create_order(db: AsyncSession, owner_id: int, payload: OrderCreate) ->
             order_items.append(
                 OrderItem(
                     product_id=product_id,
+                    product_name=product.name,
+                    product_description=product.description,
+                    product_price=product.price,
+                    product_stock_quantity=product.stock_quantity,
                     quantity=quantity,
                     price_at_time_of_purchase=product.price,
                 )
@@ -95,7 +153,11 @@ async def create_order(db: AsyncSession, owner_id: int, payload: OrderCreate) ->
 
         order = Order(
             owner_id=owner_id,
-            customer_id=customer_id,
+            customer_id=customer.id,
+            customer_name=customer.name,
+            customer_email=customer.email,
+            customer_phone=customer.phone,
+            customer_address=customer.address,
             status="pending",
             total_amount=total_amount,
             items=order_items,

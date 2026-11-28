@@ -122,7 +122,7 @@ async def test_delete_both_parents_keeps_list_status_and_analytics_working(
     )
     assert changed.status_code == 200
 
-    summary = await client.get("/api/analytics", headers=headers)
+    summary = await client.get("/api/analytics/summary", headers=headers)
     assert summary.status_code == 200
     analytics = summary.json()
     assert analytics["total_orders"] == 1
