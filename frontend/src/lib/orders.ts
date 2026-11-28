@@ -5,7 +5,7 @@ export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'completed' | 'cancel
 const ORDER_STATUSES: OrderStatus[] = ['pending', 'paid', 'shipped', 'completed', 'cancelled']
 
 export interface OrderCustomerSummary {
-  id: number
+  id: number | null
   name: string
   email: string | null
   phone: string | null
@@ -13,7 +13,7 @@ export interface OrderCustomerSummary {
 }
 
 export interface OrderProductSummary {
-  id: number
+  id: number | null
   name: string
   description: string | null
   price: string
@@ -22,7 +22,7 @@ export interface OrderProductSummary {
 
 export interface OrderItemRead {
   id: number
-  product_id: number
+  product_id: number | null
   product: OrderProductSummary
   quantity: number
   price_at_time_of_purchase: string
@@ -31,7 +31,7 @@ export interface OrderItemRead {
 
 export interface Order {
   id: number
-  customer_id: number
+  customer_id: number | null
   customer: OrderCustomerSummary
   owner_id: number
   status: OrderStatus
@@ -86,6 +86,11 @@ function readOptionalString(value: unknown, label: string): string | null {
   return readString(value, label)
 }
 
+function readOptionalNumber(value: unknown, label: string): number | null {
+  if (value === null) return null
+  return readNumber(value, label)
+}
+
 function readDecimal(value: unknown, label: string): string {
   if (typeof value === 'string' || typeof value === 'number') return String(value)
   return invalid(label)
@@ -95,7 +100,7 @@ function parseCustomerSummary(value: unknown): OrderCustomerSummary {
   if (!isRecord(value)) invalid('order customer.')
 
   return {
-    id: readNumber(value.id, 'order customer id'),
+    id: readOptionalNumber(value.id, 'order customer id'),
     name: readString(value.name, 'order customer name'),
     email: readOptionalString(value.email, 'order customer email'),
     phone: readOptionalString(value.phone, 'order customer phone'),
@@ -107,7 +112,7 @@ function parseProductSummary(value: unknown): OrderProductSummary {
   if (!isRecord(value)) invalid('order product.')
 
   return {
-    id: readNumber(value.id, 'order product id'),
+    id: readOptionalNumber(value.id, 'order product id'),
     name: readString(value.name, 'order product name'),
     description: readOptionalString(value.description, 'order product description'),
     price: readDecimal(value.price, 'order product price'),
@@ -120,7 +125,7 @@ function parseOrderItem(value: unknown): OrderItemRead {
 
   return {
     id: readNumber(value.id, 'order item id'),
-    product_id: readNumber(value.product_id, 'order item product id'),
+    product_id: readOptionalNumber(value.product_id, 'order item product id'),
     product: parseProductSummary(value.product),
     quantity: readNumber(value.quantity, 'order item quantity'),
     price_at_time_of_purchase: readDecimal(
@@ -142,7 +147,7 @@ function parseOrder(value: unknown): Order {
 
   return {
     id: readNumber(value.id, 'order id'),
-    customer_id: readNumber(value.customer_id, 'order customer id'),
+    customer_id: readOptionalNumber(value.customer_id, 'order customer id'),
     customer: parseCustomerSummary(value.customer),
     owner_id: readNumber(value.owner_id, 'order owner id'),
     status: status as OrderStatus,
